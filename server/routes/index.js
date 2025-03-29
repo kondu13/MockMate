@@ -9,6 +9,7 @@ import {
   updateUser, 
   deleteUser,
   getAllUsers,
+  filterUsers
 } from '../controllers/user.controller.js';
 import {
   getAvailableSlots,
@@ -40,6 +41,7 @@ router.route('/profile')
 
 // 2. User Discovery Routes
 router.get('/users', getAllUsers);
+router.get('/users/filter', filterUsers);
 
 // 3. Appointment Routes
 router.get('/users/:userId/availability/:date', getAvailableSlots);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   getAvailableSlots, 
   bookAppointment,
@@ -6,8 +7,10 @@ import {
 } from '../../services/api';
 
 export default function ScheduleModal({ mentorId, mentorAvailability, onClose }) {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
+  const _unused = availableSlots;
   const [selectedSlot, setSelectedSlot] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,8 +51,10 @@ export default function ScheduleModal({ mentorId, mentorAvailability, onClose })
     setIsLoading(true);
     setError('');
     try {
+      const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
+      
       const appointment = await bookAppointment(mentorId, {
-        date: selectedDate,
+        date: formattedDate,
         time: selectedSlot
       });
       
@@ -59,9 +64,11 @@ export default function ScheduleModal({ mentorId, mentorAvailability, onClose })
       
       setTimeout(() => {
         onClose();
-      }, 2000);
+        navigate('/meetings');
+      }, 1500);
     } catch (err) {
-      setError(err.message);
+      console.error('Booking error:', err);
+      setError(err.message || 'Failed to book appointment');
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +84,8 @@ export default function ScheduleModal({ mentorId, mentorAvailability, onClose })
     const availability = mentorAvailability.find(a => a.day === day);
     return availability ? availability.hours : [];
   })();
+
+  const noAvailableSlots = selectedDate && availableHours.length === 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -110,38 +119,37 @@ export default function ScheduleModal({ mentorId, mentorAvailability, onClose })
           {selectedDate && (
             <>
               <div className="mb-4">
-                <h3 className="font-medium">Available Hours:</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {availableHours.map(hour => (
-                    <span key={hour} className="bg-gray-200 px-2 py-1 rounded text-sm">
-                      {hour}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Available Time Slots</label>
-                {isLoading ? (
-                  <p>Loading available slots...</p>
-                ) : availableSlots.length === 0 ? (
-                  <p>No available slots for this date</p>
+                <h3 className="font-medium mb-2">Available Hours:</h3>
+                {noAvailableSlots ? (
+                  <div className="p-3 bg-yellow-50 text-yellow-700 rounded">
+                    No available time slots for this date. Please select another day.
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {availableSlots.map(slot => (
+                  <div className="flex flex-wrap gap-2">
+                    {availableHours.map(hour => (
                       <button
-                        key={slot}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`px-3 py-2 border rounded ${
-                          selectedSlot === slot ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'
+                        key={hour}
+                        onClick={() => setSelectedSlot(hour)}
+                        className={`px-3 py-2 rounded text-sm transition-colors ${
+                          selectedSlot === hour 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 hover:bg-gray-300'
                         }`}
                       >
-                        {slot}
+                        {hour}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
+
+              {selectedSlot && (
+                <div className="mb-4 p-3 bg-blue-50 rounded">
+                  <p className="text-sm text-blue-700">
+                    Selected time: <span className="font-medium">{selectedSlot}</span>
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -163,8 +171,8 @@ export default function ScheduleModal({ mentorId, mentorAvailability, onClose })
             </button>
             <button
               onClick={handleBookAppointment}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              disabled={isLoading || !selectedSlot}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={isLoading || !selectedDate || !selectedSlot || noAvailableSlots}
             >
               {isLoading ? 'Booking...' : 'Book Appointment'}
             </button>

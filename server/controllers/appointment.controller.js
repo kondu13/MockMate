@@ -57,10 +57,22 @@ export const bookAppointment = async (req, res) => {
     const { userId } = req.params;
     const { date, time } = req.body;
     
+    // Validate input
+    if (!date || !time) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Date and time are required'
+      });
+    }
+
+    // Format date to start of day for consistent comparison
+    const appointmentDate = new Date(date);
+    appointmentDate.setHours(0, 0, 0, 0);
+    
     // Check if slot is still available
     const existingAppointment = await Appointment.findOne({
       mentor: userId,
-      date: new Date(date).setHours(0, 0, 0, 0),
+      date: appointmentDate,
       time
     });
     
@@ -74,11 +86,15 @@ export const bookAppointment = async (req, res) => {
     // Create new appointment
     const appointment = await Appointment.create({
       mentor: userId,
-      mentee: req.user.id,
-      date: new Date(date).setHours(0, 0, 0, 0),
+      mentee: req.user._id,
+      date: appointmentDate,
       time,
       status: 'scheduled'
     });
+    
+    // Populate the appointment with user details
+    await appointment.populate('mentor', 'username skills experienceLevel');
+    await appointment.populate('mentee', 'username skills experienceLevel');
     
     res.status(201).json({
       status: 'success',
@@ -87,7 +103,11 @@ export const bookAppointment = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error('Booking error:', err);
+    res.status(500).json({ 
+      status: 'error', 
+      message: err.message || 'Failed to book appointment'
+    });
   }
 };
 

@@ -10,10 +10,20 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // First check if there's a token in localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // Only make the profile API call if we have a token
         const userData = await getUserProfile();
         setUser(userData);
       } catch (error) {
         setUser(null);
+        localStorage.removeItem('token'); // Clear invalid token
         console.error('Authentication failed:', error.message);
       } finally {
         setIsLoading(false);

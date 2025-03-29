@@ -1,55 +1,97 @@
 // src/components/Auth/Login.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../../services/auth';
+import { loginUser } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
     try {
-      await login({ email, password });
-      navigate('/dashboard');
+      const response = await loginUser(formData);
+      setUser(response);
+      navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-      {error && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            className="w-full px-3 py-2 border rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sign in to your account
+          </h2>
         </div>
-        <div className="mb-6">
-          <label className="block text-gray-700 mb-2" htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            className="w-full px-3 py-2 border rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit" className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
-          Login
-        </button>
-      </form>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

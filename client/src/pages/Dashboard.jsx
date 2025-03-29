@@ -1,15 +1,16 @@
-import { getAllUsers, filterUsers } from '../services/api'; // Now properly imported
+import { getAllUsers, filterUsers } from '../services/api';
 import { useCallback, useEffect, useState } from 'react';
 import {useAuth} from '../hooks/useAuth';
 import UserCard from '../components/Dashboard/UserCard';
+import FilterUsers from '../components/Dashboard/FilterUsers';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasFilters, setHasFilters] = useState(false);
 
-  // Wrap fetchUsers in useCallback to prevent unnecessary recreations
   const fetchUsers = useCallback(async (filters = {}) => {
     setIsLoading(true);
     setError('');
@@ -17,21 +18,47 @@ export default function Dashboard() {
       let data;
       if (Object.keys(filters).length === 0) {
         data = await getAllUsers();
+        setHasFilters(false);
       } else {
-        data = await filterUsers(filters);
+        // Only include non-empty filter values
+        const validFilters = Object.entries(filters).reduce((acc, [key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : true)) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {});
+        
+        data = await filterUsers(validFilters);
+        setHasFilters(true);
       }
-      // Filter out current user
-      setUsers(data.filter(u => u._id !== user?._id));
+      
+      // Handle different response formats
+      const usersArray = Array.isArray(data) ? data : 
+                        data?.users ? data.users : 
+                        data?.data ? data.data : [];
+      
+      // Filter out current user and ensure we have valid user objects
+      const filteredUsers = usersArray
+        .filter(u => u && u._id && u._id !== user?._id)
+        .map(u => ({
+          ...u,
+          skills: Array.isArray(u.skills) ? u.skills : [],
+          weeklyAvailability: Array.isArray(u.weeklyAvailability) ? u.weeklyAvailability : []
+        }));
+      
+      setUsers(filteredUsers);
     } catch (err) {
-      setError(err.message);
+      console.error('Error fetching users:', err);
+      setError(err.response?.data?.message || 'Failed to fetch users');
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
-  }, [user?._id]); // Only recreate if user._id changes
+  }, [user?._id]);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]); // Now includes fetchUsers in dependencies
+  }, [fetchUsers]);
 
   const handleFilter = (filters) => {
     fetchUsers(filters);
@@ -52,8 +79,28 @@ export default function Dashboard() {
           {error}
         </div>
       ) : users.length === 0 ? (
-        <div className="p-4 bg-yellow-100 text-yellow-700 rounded">
-          No users found matching your criteria
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <div className="text-gray-500 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {hasFilters ? 'No mentors found matching your criteria' : 'No mentors available yet'}
+          </h3>
+          <p className="text-gray-500 mb-4">
+            {hasFilters 
+              ? 'Try adjusting your filters to see more results'
+              : 'Check back later to find mentors in your area'}
+          </p>
+          {hasFilters && (
+            <button
+              onClick={() => handleFilter({})}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

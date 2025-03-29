@@ -73,31 +73,33 @@ export const deleteUser = async (req, res, next) => {
 // fetch all users
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password -__v');
+    // Exclude current user from results
+    const users = await User.find({ _id: { $ne: req.user._id } }).select('-password -__v');
     res.status(200).json({ status: 'success', data: users });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
-
 // filter users
 export const filterUsers = async (req, res) => {
   try {
     const { skills, experienceLevel, date, time } = req.query;
     
-    // Base query
-    let query = {};
+    // Base query - exclude current user
+    let query = { _id: { $ne: req.user._id } };
     
-    // Skill filter
+    // Skill filter - case insensitive
     if (skills) {
-      const skillsArray = skills.split(',');
+      const skillsArray = skills.split(',').map(skill => 
+        new RegExp('^' + skill.trim() + '$', 'i')
+      );
       query.skills = { $in: skillsArray };
     }
     
-    // Experience level filter
+    // Experience level filter - case insensitive
     if (experienceLevel) {
-      query.experienceLevel = experienceLevel;
+      query.experienceLevel = new RegExp('^' + experienceLevel + '$', 'i');
     }
     
     // Date and time filter
