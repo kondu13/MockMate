@@ -108,6 +108,15 @@ export const registerUser = async (userData) => {
 };
 
 export const logoutUser = async () => {
-  await api.post('/logout');
-  localStorage.removeItem('token');
+  try {
+    await api.post('/logout');
+    localStorage.removeItem('token');
+    // Clear any other user data
+    window.location.href = '/login'; // Force refresh to clear state
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Fallback - clear client-side tokens anyway
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  }
 };
