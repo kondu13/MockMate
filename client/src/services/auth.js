@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://mockmate-l6fv.onrender.com',
+  baseURL: 'https://mockmate-l6fv.onrender.com/api/v1',
   withCredentials: true
 });
 
