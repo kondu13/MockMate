@@ -6,7 +6,7 @@ export default function useAxios() {
   const { user } = useAuth();
 
   const api = axios.create({
-    baseURL: 'http://localhost:5000/api/v1',
+    baseURL: 'https://mock-mate-nine.vercel.app',
     withCredentials: true
   });
 
